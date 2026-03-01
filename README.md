@@ -35,7 +35,7 @@ Open http://localhost:3000.
 
 ## API overview
 
-- `POST /api/rooms` action `create` -> create room.
-- `POST /api/rooms` action `join` -> join room with code.
-- `POST /api/rooms` action `move` -> make a turn move.
-- `GET /api/state?roomCode=XXXXXX` -> poll latest state.
+- `POST /api/rooms?action=create` — create room.
+- `POST /api/rooms?action=join` — join room with code.
+- `POST /api/rooms?action=move` — make a turn move.
+- `GET /api/state?roomCode=XXXXXX` — poll latest state.

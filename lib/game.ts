@@ -85,7 +85,19 @@ export function newPlayer(id: string, name: string): Player {
 }
 
 export function startRound(state: RoomState): RoomState {
-  const next = { ...state };
+  const bagCopy = [...state.bag];
+  const next: RoomState = {
+    ...state,
+    bag: bagCopy,
+    players: state.players.map((player) => ({
+      ...player,
+      patternLines: { ...player.patternLines },
+      wall: { ...player.wall }
+    })),
+    factories: [],
+    center: [...state.center]
+  };
+
   const factories: TileColor[][] = [];
   for (let i = 0; i < 5; i += 1) {
     factories.push(drawTiles(next.bag, 4));
@@ -124,9 +136,17 @@ export function takeTurn(state: RoomState, playerId: string, source: string, col
     taken = next.center.filter((c) => c === color);
     next.center = next.center.filter((c) => c !== color);
   } else {
-    const idx = Number(source.replace("factory-", ""));
+    const match = /^factory-(\d+)$/.exec(source);
+    if (!match) {
+      throw new Error("Invalid source format");
+    }
+
+    const idx = Number.parseInt(match[1], 10);
+    if (!Number.isFinite(idx) || !Number.isInteger(idx) || idx < 0 || idx >= next.factories.length) {
+      throw new Error("Factory index out of range");
+    }
+
     const factory = next.factories[idx];
-    if (!factory) throw new Error("Factory does not exist");
     taken = factory.filter((c) => c === color);
     const leftovers = factory.filter((c) => c !== color);
     next.center.push(...leftovers);
@@ -148,7 +168,12 @@ export function takeTurn(state: RoomState, playerId: string, source: string, col
 
   const empties = next.factories.every((f) => f.length === 0) && next.center.length === 0;
   if (empties) {
-    const winner = [...next.players].sort((a, b) => b.score - a.score)[0];
+    const winner = [...next.players].sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.id.localeCompare(b.id);
+    })[0];
     next.status = "finished";
     next.winnerId = winner.id;
     return next;

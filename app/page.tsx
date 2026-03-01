@@ -33,16 +33,39 @@ export default function HomePage(): JSX.Element {
   const isMyTurn = room?.activePlayerId === playerId;
 
   useEffect(() => {
-    if (!room?.code) return;
-    const id = setInterval(async () => {
-      const res = await fetch(`/api/state?roomCode=${room.code}`);
-      if (res.ok) {
+    if (!room?.code || room.status === "finished") return;
+
+    const controller = new AbortController();
+
+    const pollRoom = async (): Promise<void> => {
+      try {
+        const res = await fetch(`/api/state?roomCode=${room.code}`, { signal: controller.signal });
+        if (!res.ok || controller.signal.aborted) return;
+
         const json = (await res.json()) as { room: RoomState };
-        setRoom(json.room);
+        if (!controller.signal.aborted) {
+          setRoom(json.room);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
       }
+    };
+
+    const id = setInterval(() => {
+      if (room.status === "finished") {
+        clearInterval(id);
+        return;
+      }
+      void pollRoom();
     }, 1500);
-    return () => clearInterval(id);
-  }, [room?.code]);
+
+    return () => {
+      controller.abort();
+      clearInterval(id);
+    };
+  }, [room?.code, room?.status]);
 
   async function createRoom(e: FormEvent): Promise<void> {
     e.preventDefault();
